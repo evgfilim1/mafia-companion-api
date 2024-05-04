@@ -1,0 +1,7 @@
+asyncpg~=0.29.0
+fastapi~=0.111.0
+passlib[bcrypt]~=1.7.4
+pydantic~=2.7.1
+python-multipart~=0.0.9
+redis~=5.0.3
+sqlalchemy[asyncio]~=2.0.29

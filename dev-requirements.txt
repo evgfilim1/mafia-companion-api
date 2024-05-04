@@ -1,0 +1,6 @@
+alembic~=1.13.1
+black~=24.4.2
+httpx~=0.27.0
+isort~=5.13.2
+# mypy~=1.10.0  # [missing support for PEP 695](https://github.com/python/mypy/issues/15238)
+types-passlib~=1.7.7

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Рейтинг</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.min.css">
+  <style>
+      body {
+          max-width: 1000px;
+      }
+
+      .error {
+          color: red;
+      }
+
+      table {
+          table-layout: auto;
+      }
+
+      .col-nickname {
+          min-width: 20%;
+      }
+
+      .col-place {
+          min-width: 5%;
+      }
+
+      .place-1 {
+          background-color: #ffd700; /* gold */
+      }
+
+      .place-1:nth-child(2n) {
+          background-color: #d9b800;
+      }
+
+      .place-2 {
+          background-color: #c0c0c0; /* silver */
+      }
+
+      .place-2:nth-child(2n) {
+          background-color: #999999;
+      }
+
+      .place-3 {
+          background-color: #cd7f32; /* bronze */
+      }
+
+      .place-3:nth-child(2n) {
+          background-color: #a66728;
+      }
+
+      @media (prefers-color-scheme: dark) {
+          .place-1 {
+              background-color: #b39000;
+          }
+
+          .place-1:nth-child(2n) {
+              background-color: #8c7000;
+          }
+
+          .place-2 {
+              background-color: #989898;
+          }
+
+          .place-2:nth-child(2n) {
+              background-color: #737373;
+          }
+
+          .place-3 {
+              background-color: #8b4513;
+          }
+
+          .place-3:nth-child(2n) {
+              background-color: #66330e;
+          }
+      }
+  </style>
+</head>
+<body>
+<h1>Рейтинг</h1>
+<table id="scoresTable">
+  <thead>
+  <tr>
+    <th class="col-place">Место</th>
+    <th class="col-nickname">Никнейм</th>
+    <th>Очки</th>
+    <th>Число побед<br>(М/Д/Ш/Ж)</th>
+    <th>Число игр<br>(М/Д/Ш/Ж)</th>
+    <th>Процент побед</th>
+    <th>Фолы</th>
+    <th>Удаления</th>
+  </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+<script>
+  const makeTMDSCString = (t, o) => `${t} (${o.mafia}/${o.don}/${o.sheriff}/${o.citizen})`
+  const baseUrl = prompt('Введите адрес сервера', 'http://localhost:8000')
+  const fetchScores = () => {
+    fetch(`${baseUrl}/tournaments/1/scores`)
+      .then(response => response.json())
+      .then(data => {
+        const tableBody = document.getElementById('scoresTable').getElementsByTagName('tbody')[0];
+        let place = 0
+        let lastScore = null
+        data.result.forEach(scoreRow => {
+          if (lastScore !== scoreRow.sum) {
+            place++
+            lastScore = scoreRow.sum
+          }
+          const newRow = tableBody.insertRow();
+          if (place <= 3) {
+            newRow.className = `place-${place}`
+          }
+          newRow.insertCell().innerText = place.toString()
+          newRow.insertCell().innerText = scoreRow.nickname
+          newRow.insertCell().innerText = scoreRow.sum.toFixed(2)
+          newRow.insertCell().innerText = makeTMDSCString(scoreRow.win_count, scoreRow.wins_by_role)
+          newRow.insertCell().innerText = makeTMDSCString(scoreRow.play_count, scoreRow.games_by_role)
+          newRow.insertCell().innerText = `${(scoreRow.win_rate * 100).toFixed(2)}%`
+          newRow.insertCell().innerText = scoreRow.warns
+          newRow.insertCell().innerText = scoreRow.times_kicked
+        })
+      })
+      .catch(error => {
+        console.error('Error:', error)
+        const errorElement = document.createElement('p')
+        errorElement.innerText = `Ошибка при загрузке данных: ${error}`
+        errorElement.className = 'error'
+        document.getElementsByTagName("h1")[0].insertAdjacentElement("afterend", errorElement)
+      })
+  }
+  document.addEventListener('DOMContentLoaded', fetchScores)
+</script>
+</body>
+</html>
