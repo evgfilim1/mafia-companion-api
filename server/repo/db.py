@@ -507,6 +507,6 @@ class GamesRepo(BaseRepo[AsyncSession]):
                 )
         if result.raw_game_log is not None:
             await self._conn.execute(
-                insert(db_models.GameLog).values(game_id=game_id, log=result.raw_game_log)
+                insert(db_models.GameLog).values(game_id=game_id, raw_game_log=result.raw_game_log)
             )
         return await self._db_result_to_model(db_result, result.results)
