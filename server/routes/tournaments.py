@@ -1,6 +1,7 @@
+import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import Response
 
 from ..dependencies.auth import get_current_user_id
@@ -86,6 +87,8 @@ async def get_tournament(
 @router.get("/{tournament_id}/scores", tags=["scores"])
 async def get_tournament_scores(
     tournament_id: int,
+    from_: Annotated[datetime.datetime | None, Query(alias="from")] = None,
+    to: Annotated[datetime.datetime | None, Query()] = None,
     *,
     tournaments_repo: Annotated[TournamentsRepo, Depends(get_tournaments_repo)],
     tables_repo: Annotated[TablesRepo, Depends(get_tables_repo)],
@@ -97,7 +100,7 @@ async def get_tournament_scores(
     tables = await tables_repo.get_by_tournament(tournament_id)
     data = []
     for table in tables:
-        games = await games_repo.get_by_table(table.id)
+        games = await games_repo.get_by_table(table.id, played_from=from_, played_to=to)
         for game in games:
             result = await games_repo.get_result(game.id)
             if result is not None:

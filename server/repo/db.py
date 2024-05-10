@@ -420,15 +420,39 @@ class GamesRepo(BaseRepo[AsyncSession]):
     async def get_by_id(self, game_id: int) -> Game | None:
         return await self._db_to_model(await self._conn.get(db_models.Game, game_id))
 
-    async def get_by_table(self, table_id: int) -> list[Game]:
+    async def get_by_table(
+        self,
+        table_id: int,
+        *,
+        played_from: datetime.datetime | None = None,
+        played_to: datetime.datetime | None = None,
+    ) -> list[Game]:
         query = select(db_models.Game).where(db_models.Game.table_id == table_id)
+        if played_from is not None or played_to is not None:
+            query = query.join(db_models.GameResult)
+        if played_from is not None:
+            query = query.where(db_models.GameResult.finished_at >= played_from)
+        if played_to is not None:
+            query = query.where(db_models.GameResult.finished_at <= played_to)
         return [
             await self._db_to_model(game)
             for game in (await self._conn.execute(query)).scalars().all()
         ]
 
-    async def get_by_table_as_stream(self, table_id: int) -> AsyncIterator[Game]:
+    async def get_by_table_as_stream(
+        self,
+        table_id: int,
+        *,
+        played_from: datetime.datetime | None = None,
+        played_to: datetime.datetime | None = None,
+    ) -> AsyncIterator[Game]:
         query = select(db_models.Game).where(db_models.Game.table_id == table_id)
+        if played_from is not None or played_to is not None:
+            query = query.join(db_models.GameResult)
+        if played_from is not None:
+            query = query.where(db_models.GameResult.finished_at >= played_from)
+        if played_to is not None:
+            query = query.where(db_models.GameResult.finished_at <= played_to)
         async for game in await self._conn.stream_scalars(query):
             yield await self._db_to_model(game)
 

@@ -18,12 +18,29 @@
           table-layout: auto;
       }
 
+      .row {
+          display: flex;
+          flex-wrap: wrap;
+          margin-bottom: 1em;
+          align-content: center;
+          align-items: center;
+      }
+
+      .row > .col {
+          flex: 1;
+          margin-right: 1em;
+      }
+
       .col-nickname {
           min-width: 20%;
       }
 
       .col-place {
           min-width: 5%;
+      }
+
+      #empty {
+          color: gray;
       }
 
       .place-1 {
@@ -79,6 +96,19 @@
 </head>
 <body>
 <h1>Рейтинг</h1>
+<div class="row">
+  <div class="col">
+    <label for="from-date">Начиная с</label>
+    <input type="date" id="from-date">
+  </div>
+  <div class="col">
+    <label for="to-date">До</label>
+    <input type="date" id="to-date">
+  </div>
+  <div class="col">
+    <button id="fetch">Обновить</button>
+  </div>
+</div>
 <table id="scoresTable">
   <thead>
   <tr>
@@ -95,14 +125,59 @@
   <tbody>
   </tbody>
 </table>
+<p id="empty" style="display: none">Нет данных</p>
 <script>
   const makeTMDSCString = (t, o) => `${t} (${o.mafia}/${o.don}/${o.sheriff}/${o.citizen})`
-  const baseUrl = prompt('Введите адрес сервера', 'http://localhost:8000')
+  const onDomLoaded = () => {
+    const now = new Date()
+
+    const fromElem = document.getElementById('from-date')
+    fromElem.max = now.toISOString().split('T')[0]
+    fromElem.addEventListener('change', () => {
+      toElem.min = fromElem.value
+    })
+
+    const toElem = document.getElementById('to-date')
+    toElem.max = now.toISOString().split('T')[0]
+    toElem.addEventListener('change', () => {
+      const now = new Date()
+      fromElem.max = toElem.value || now.toISOString().split('T')[0]
+    })
+
+    const fetchButton = document.getElementById('fetch')
+    fetchButton.addEventListener('click', fetchScores)
+  }
   const fetchScores = () => {
-    fetch(`${baseUrl}/tournaments/1/scores`)
+    const baseUrl = prompt('Введите адрес сервера', 'http://localhost:8000')
+    if (baseUrl === null) {
+      return
+    }
+    const fromElem = document.getElementById('from-date')
+    const toElem = document.getElementById('to-date')
+    const body = {}
+    if (fromElem.valueAsDate) {
+      const from = fromElem.valueAsDate
+      from.setHours(0, 0, 0, 0)
+      body.from = from.toISOString()
+    }
+    if (toElem.valueAsDate) {
+      const to = toElem.valueAsDate
+      to.setHours(0, 0, 0, 0)
+      to.setDate(to.getDate() + 1)
+      body.to = to.toISOString()
+    }
+    fetch(`${baseUrl}/tournaments/1/scores?` + new URLSearchParams(body))
       .then(response => response.json())
       .then(data => {
         const tableBody = document.getElementById('scoresTable').getElementsByTagName('tbody')[0];
+        tableBody.innerHTML = ""
+        const emptyElement = document.getElementById('empty')
+        if (data.result && data.result.length > 0) {
+          emptyElement.style.display = 'none'
+        } else {
+          emptyElement.style.display = 'block'
+          return
+        }
         let place = 0
         let lastScore = null
         data.result.forEach(scoreRow => {
@@ -132,7 +207,7 @@
         document.getElementsByTagName("h1")[0].insertAdjacentElement("afterend", errorElement)
       })
   }
-  document.addEventListener('DOMContentLoaded', fetchScores)
+  document.addEventListener('DOMContentLoaded', onDomLoaded)
 </script>
 </body>
 </html>
