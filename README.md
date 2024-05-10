@@ -1,5 +1,9 @@
 # Mafia companion API
 
+<!-- region nice badges -->
+[![wakatime](https://wakatime.com/badge/github/evgfilim1/mafia-companion-api.svg)](https://wakatime.com/badge/github/evgfilim1/mafia-companion-api)
+<!-- endregion -->
+
 API для приложения [Mafia companion][app].
 
 Позволяет более гибко сохранять список игроков, турниров и партий в игре "Мафия".
