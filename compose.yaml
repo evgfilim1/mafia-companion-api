@@ -3,7 +3,6 @@ services:
     build:
       context: .
       target: runtime
-      network: host
     image: "ghcr.io/evgfilim1/mafia-companion-server:${IMAGE_VERSION:-dev}"
     restart: unless-stopped
     deploy:
@@ -26,7 +25,6 @@ services:
     build:
       context: .
       target: db-migrate
-      network: host
     image: "ghcr.io/evgfilim1/mafia-companion-server:${IMAGE_VERSION:-dev}-migrate"
     restart: "no"
     deploy:
