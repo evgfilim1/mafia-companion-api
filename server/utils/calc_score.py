@@ -44,5 +44,6 @@ def calc_score(games: list[TournamentGame]) -> list[ScoreRow]:
             row.found_mafia_count += result.found_mafia_count
             row.times_found_sheriff += result.has_found_sheriff
             row.times_killed_first_night += result.was_killed_first_night
-            row.guessed_mafia_count += result.guessed_mafia_count
+            if result.was_killed_first_night:
+                row.guessed_mafia_counts[result.guessed_mafia_count] += 1
     return list(sorted(players.values(), key=_sort_key))

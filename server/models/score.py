@@ -23,7 +23,7 @@ class ScoreRow(BaseModel):
     found_mafia_count: int = 0
     times_found_sheriff: int = 0
     times_killed_first_night: int = 0
-    guessed_mafia_count: int = 0
+    guessed_mafia_counts: list[int] = [0, 0, 0, 0]
 
     @computed_field
     @property

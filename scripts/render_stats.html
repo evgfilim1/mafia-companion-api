@@ -118,6 +118,7 @@
     <th>Число побед<br>(М/Д/Ш/Ж)</th>
     <th>Число игр<br>(М/Д/Ш/Ж)</th>
     <th>Процент побед</th>
+    <th>Смертей в первую ночь<br>(0/1/2/3 угадано в ЛХ)</th>
     <th>Фолы</th>
     <th>Удаления</th>
   </tr>
@@ -195,6 +196,7 @@
           newRow.insertCell().innerText = makeTMDSCString(scoreRow.win_count, scoreRow.wins_by_role)
           newRow.insertCell().innerText = makeTMDSCString(scoreRow.play_count, scoreRow.games_by_role)
           newRow.insertCell().innerText = `${(scoreRow.win_rate * 100).toFixed(2)}%`
+          newRow.insertCell().innerText = `${scoreRow.first_night_killed_times} (${scoreRow.guessed_mafia_counts.join('/')})`
           newRow.insertCell().innerText = scoreRow.warns
           newRow.insertCell().innerText = scoreRow.times_kicked
         })
