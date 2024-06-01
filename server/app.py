@@ -4,6 +4,7 @@ from fastapi.routing import APIRoute
 
 from .routes.auth import router as auth_router
 from .routes.games import router as games_router
+from .routes.health import router as health_router
 from .routes.players import router as players_router
 from .routes.root import router as root_router
 from .routes.tables import router as tables_router
@@ -27,6 +28,7 @@ app.add_middleware(
 for router in [
     auth_router,
     games_router,
+    health_router,
     players_router,
     root_router,
     tables_router,

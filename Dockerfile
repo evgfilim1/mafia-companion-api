@@ -30,6 +30,12 @@ FROM python:3.12-slim AS runtime-base
 
 EXPOSE 8000
 WORKDIR /app
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update  \
+    && apt-get install --no-install-recommends -y curl \
+    && rm -rf /var/log/*
 COPY server server
 
 USER 1000
