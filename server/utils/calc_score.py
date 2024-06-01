@@ -1,6 +1,7 @@
 import dataclasses
 from typing import Any
 
+from .enums import Team
 from ..models.game import Game, GamePlayer, GameResult, PlayerResult
 from ..models.score import ScoreRow
 
@@ -16,7 +17,8 @@ def _sort_key(item: ScoreRow) -> Any:
 
 
 def calc_score(games: list[TournamentGame]) -> list[ScoreRow]:
-    players = {}
+    players: dict[str, ScoreRow] = {}
+    players_ci_wins: dict[str, list[float]] = {}
     for game in games:
         player: GamePlayer
         result: PlayerResult
@@ -31,7 +33,6 @@ def calc_score(games: list[TournamentGame]) -> list[ScoreRow]:
                     row.best_turn_points += 0.5
             if game.result.winner == player.role.team:
                 row.wins_by_role[player.role] += 1
-            # TODO: calc Ci points
             row.judge_extra_points += sum(
                 extra.points for extra in result.extra_scores if extra.points > 0
             )
@@ -44,6 +45,21 @@ def calc_score(games: list[TournamentGame]) -> list[ScoreRow]:
             row.found_mafia_count += result.found_mafia_count
             row.times_found_sheriff += result.has_found_sheriff
             row.times_killed_first_night += result.was_killed_first_night
-            if result.was_killed_first_night:
+            if result.was_killed_first_night and player.role.team == Team.CITIZEN:
                 row.guessed_mafia_counts[result.guessed_mafia_count] += 1
+                if result.guessed_mafia_count == 0:
+                    ci_k = 0
+                elif game.result.winner == Team.CITIZEN:
+                    ci_k = 0.5
+                else:
+                    ci_k = 1
+                players_ci_wins.setdefault(player.nickname, []).append(ci_k)
+    for nickname, ci_k in players_ci_wins.items():
+        row = players[nickname]
+        total_games = sum(row.games_by_role.values())
+        if total_games < 4:
+            continue
+        ci = round(min(len(ci_k) * 0.4 / round(total_games * 0.4), 0.4), 2)
+        for k in ci_k:
+            row.ci_points += ci * k
     return list(sorted(players.values(), key=_sort_key))
