@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 
 from ..dependencies.auth import get_current_user_id, login_form_data
 from ..dependencies.repo import get_auth_repo, get_users_repo
@@ -53,7 +53,7 @@ async def login(
 @router.post("/refresh")
 async def refresh_auth(
     *,
-    refresh_token: str,
+    refresh_token: Annotated[str, Header(alias="X-Refresh-Token")],
     auth_repo: Annotated[AuthRepo, Depends(get_auth_repo)],
 ) -> TokensModel:
     tokens = await auth_repo.update_tokens_by_refresh(refresh_token)
