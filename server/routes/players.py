@@ -35,8 +35,8 @@ async def get_player(
 async def update_player(
     player_id: int,
     *,
-    players_repo: Annotated[PlayersRepo, Depends(get_players_repo)],
     new_player: NewPlayer,
+    players_repo: Annotated[PlayersRepo, Depends(get_players_repo)],
 ) -> Player:
     existing_player = await players_repo.get_by_id(player_id)
     player_exists_error = HTTPException(
@@ -85,7 +85,7 @@ async def get_all_players(
     )
 
 
-@router.post("/")
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_player(
     new_player: NewPlayer,
     *,

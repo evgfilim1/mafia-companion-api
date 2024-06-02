@@ -51,7 +51,7 @@ async def get_table_games(
     )
 
 
-@router.post("/{table_id}/games", tags=["games"])
+@router.post("/{table_id}/games", tags=["games"], status_code=status.HTTP_201_CREATED)
 async def create_table_game(
     table_id: int,
     *,

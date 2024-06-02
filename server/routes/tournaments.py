@@ -1,7 +1,7 @@
 import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 
 from ..dependencies.auth import get_current_user_id
@@ -46,7 +46,7 @@ async def get_my_tournaments(
     )
 
 
-@router.post("/")
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_tournament(
     *,
     current_user_id: Annotated[int, Depends(get_current_user_id)],
@@ -152,7 +152,7 @@ async def get_tournament_tables(
     )
 
 
-@router.post("/{tournament_id}/tables", tags=["tables"])
+@router.post("/{tournament_id}/tables", tags=["tables"], status_code=status.HTTP_201_CREATED)
 async def create_table(
     tournament_id: int,
     *,
