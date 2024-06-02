@@ -9,6 +9,7 @@ from .routes.players import router as players_router
 from .routes.root import router as root_router
 from .routes.tables import router as tables_router
 from .routes.tournaments import router as tournaments_router
+from .routes.users import router as users_router
 from .utils.app_lifespan import lifespan
 
 app = FastAPI(
@@ -33,6 +34,7 @@ for router in [
     root_router,
     tables_router,
     tournaments_router,
+    users_router,
 ]:
     app.include_router(router)
 
