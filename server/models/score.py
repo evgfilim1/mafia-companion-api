@@ -1,11 +1,23 @@
-from typing import Annotated
-
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, computed_field
 
 from ..utils.enums import Role
 
-type CountByRole = dict[Role, int]
-_BY_ROLE_TEMPLATE: CountByRole = {r: 0 for r in Role}
+
+class CountByRole(BaseModel):
+    mafia: int = 0
+    don: int = 0
+    sheriff: int = 0
+    citizen: int = 0
+
+    def __getitem__(self, item: Role) -> int:
+        return getattr(self, item.value)
+
+    def __setitem__(self, item: Role, value: int):
+        setattr(self, item.value, value)
+
+    @property
+    def sum(self):
+        return sum(self[r] for r in Role)
 
 
 class ScoreRow(BaseModel):
@@ -14,9 +26,9 @@ class ScoreRow(BaseModel):
     judge_penalty_points: float = 0
     best_turn_points: float = 0
     ci_points: float = 0
-    wins_by_role: Annotated[CountByRole, Field(default_factory=_BY_ROLE_TEMPLATE.copy)]
+    wins_by_role: CountByRole = CountByRole()
     first_night_killed_times: int = 0
-    games_by_role: Annotated[CountByRole, Field(default_factory=_BY_ROLE_TEMPLATE.copy)]
+    games_by_role: CountByRole = CountByRole()
     warns: int = 0
     times_kicked: int = 0
     times_caused_other_team_won: int = 0
@@ -28,12 +40,12 @@ class ScoreRow(BaseModel):
     @computed_field
     @property
     def win_count(self) -> int:
-        return sum(self.wins_by_role.values())
+        return self.wins_by_role.sum
 
     @computed_field
     @property
     def play_count(self) -> int:
-        return sum(self.games_by_role.values())
+        return self.games_by_role.sum
 
     @computed_field
     @property

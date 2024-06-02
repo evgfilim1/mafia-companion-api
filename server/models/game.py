@@ -1,10 +1,9 @@
 import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
 from ..utils.enums import Role, Team
-from ..utils.types import JsonT
 
 
 class GamePlayer(BaseModel):
@@ -44,7 +43,7 @@ class BaseGameResult(BaseModel):
 
 
 class NewGameResult(BaseGameResult):
-    raw_game_log: dict[str, JsonT] | None = None
+    raw_game_log: dict[str, Any] | None = None
     finished_at: datetime.datetime | None = None
 
 

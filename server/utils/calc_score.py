@@ -56,7 +56,7 @@ def calc_score(games: list[TournamentGame]) -> list[ScoreRow]:
                 players_ci_wins.setdefault(player.nickname, []).append(ci_k)
     for nickname, ci_k in players_ci_wins.items():
         row = players[nickname]
-        total_games = sum(row.games_by_role.values())
+        total_games = row.games_by_role.sum
         if total_games < 4:
             continue
         ci = round(min(len(ci_k) * 0.4 / round(total_games * 0.4), 0.4), 2)
