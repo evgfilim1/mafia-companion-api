@@ -1,11 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from ..dependencies.auth import get_current_user_id, login_form_data
 from ..dependencies.repo import get_auth_repo, get_users_repo
 from ..dependencies.settings import get_app_settings
-from ..models.auth import AuthData, LoginModel, RegisterModel, TokensModel
+from ..models.auth import AuthData, ChangePasswordModel, LoginModel, RegisterModel, TokensModel
 from ..models.user import User
 from ..repo.cache import AuthRepo
 from ..repo.db import UsersRepo
@@ -66,6 +66,21 @@ async def refresh_auth(
         access_token=tokens[0],
         refresh_token=tokens[1],
     )
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    *,
+    passwd: ChangePasswordModel,
+    user_id: Annotated[str, Depends(get_current_user_id)],
+    users_repo: Annotated[UsersRepo, Depends(get_users_repo)],
+) -> None:
+    if not await users_repo.verify_password(user_id, passwd.old_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid old password",
+        )
+    await users_repo.edit_password(user_id, passwd.new_password)
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)

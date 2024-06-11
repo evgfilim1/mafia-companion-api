@@ -69,6 +69,24 @@ class UsersRepo(BaseRepo[AsyncSession]):
         res = (await self._conn.execute(query)).scalar_one_or_none()
         return await self._db_to_model(res)
 
+    async def _verify_password(self, user: db_models.User, password: str) -> bool:
+        is_valid, new_hash = password_context.verify_and_update(password, user.password_hash)
+        if not is_valid:
+            return False
+        if new_hash is not None:
+            await self._conn.execute(
+                update(db_models.User)
+                .where(db_models.User.id == user.id)
+                .values(password_hash=new_hash)
+            )
+        return True
+
+    async def verify_password(self, user_id: str, password: str) -> bool:
+        user: User | None = await self._conn.get(db_models.User, user_id)
+        if user is None:
+            return False
+        return await self._verify_password(user, password)
+
     async def try_login(self, username: str, password: str) -> WithID[User]:
         """Try to log in with the given username and password.
 
@@ -87,15 +105,9 @@ class UsersRepo(BaseRepo[AsyncSession]):
         user = (await self._conn.execute(query)).scalar_one_or_none()
         if user is None:
             raise UserNotFoundError(username)
-        is_valid, new_hash = password_context.verify_and_update(password, user.password_hash)
+        is_valid = await self._verify_password(user, password)
         if not is_valid:
             raise InvalidPasswordError()
-        if new_hash is not None:
-            await self._conn.execute(
-                update(db_models.User)
-                .where(db_models.User.id == user.id)
-                .values(password_hash=new_hash)
-            )
         return user.id, await self._db_to_model(user)
 
     async def create(

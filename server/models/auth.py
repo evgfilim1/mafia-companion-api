@@ -18,6 +18,11 @@ class RegisterModel(BaseModel):
     invite_code: str
 
 
+class ChangePasswordModel(BaseModel):
+    old_password: str
+    new_password: str
+
+
 class TokensModel(BaseModel):
     access_token: str
     refresh_token: str
