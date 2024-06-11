@@ -58,13 +58,22 @@ async def put_player(
     )
 
 
-@router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_player(
-    player_id: int,
+@router.post("/{player_id}/invite", tags=["users"], status_code=status.HTTP_201_CREATED)
+async def invite_as_judge(
+    player_id: UUID,
     *,
+    creds: LoginModel,
     players_repo: Annotated[PlayersRepo, Depends(get_players_repo)],
+    users_repo: Annotated[UsersRepo, Depends(get_users_repo)],
 ) -> None:
-    await players_repo.delete(player_id)
+    player = await players_repo.get_by_id(str(player_id))
+    if player is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    await users_repo.create_linked(
+        username=creds.username,
+        password=creds.password,
+        player_id=str(player_id),
+    )
 
 
 # TODO: allow editing/removing only if the player is not participating in any game/tournament ^
