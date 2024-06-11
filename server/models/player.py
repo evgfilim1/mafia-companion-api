@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -7,4 +9,4 @@ class NewPlayer(BaseModel):
 
 
 class Player(NewPlayer):
-    id: int
+    id: UUID

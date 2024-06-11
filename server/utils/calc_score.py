@@ -1,9 +1,9 @@
 import dataclasses
 from typing import Any
 
-from .enums import Team
 from ..models.game import Game, GamePlayer, GameResult, PlayerResult
 from ..models.score import ScoreRow
+from .enums import Team
 
 
 @dataclasses.dataclass(kw_only=True)

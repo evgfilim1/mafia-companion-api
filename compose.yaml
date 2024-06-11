@@ -46,7 +46,10 @@ services:
       db:
         condition: service_healthy
   db:
-    image: postgres:16-alpine
+    build:
+      context: .
+      target: db
+    image: "ghcr.io/evgfilim1/mafia-companion-server:postgres-16-uuidv7-1.5"
     restart: unless-stopped
     deploy:
       resources:
@@ -55,8 +58,9 @@ services:
           memory: 256M
     volumes:
       - pg_data:/var/lib/postgresql/data
+    env_file: .env
     environment:
-      POSTGRES_PASSWORD: mafia-companion-server-database-admin
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-mafia-companion-server-database-admin}"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}"]
       interval: 10s

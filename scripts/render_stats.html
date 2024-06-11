@@ -154,6 +154,10 @@
     if (baseUrl === null) {
       return
     }
+    const tournamentId = prompt('Введите ID турнира', '018fdfe3-07f1-7502-b80c-c67a8d556c6b')
+    if (tournamentId === null) {
+      return
+    }
     const fromElem = document.getElementById('from-date')
     const toElem = document.getElementById('to-date')
     const body = {}
@@ -168,7 +172,7 @@
       to.setDate(to.getDate() + 1)
       body.to = to.toISOString()
     }
-    fetch(`${baseUrl}/tournaments/1/scores?` + new URLSearchParams(body))
+    fetch(`${baseUrl}/tournaments/${tournamentId}/scores?` + new URLSearchParams(body))
       .then(response => response.json())
       .then(data => {
         const tableBody = document.getElementById('scoresTable').getElementsByTagName('tbody')[0];

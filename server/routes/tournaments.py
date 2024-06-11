@@ -1,5 +1,6 @@
 import datetime
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
@@ -35,7 +36,7 @@ async def get_all_tournaments(
 @router.get("/my")
 async def get_my_tournaments(
     *,
-    user_id: Annotated[int, Depends(get_current_user_id)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
     tournaments_repo: Annotated[TournamentsRepo, Depends(get_tournaments_repo)],
 ) -> PaginatedResponse[Tournament]:
     tournaments = await tournaments_repo.get_by_creator_user_id(user_id)
@@ -49,7 +50,7 @@ async def get_my_tournaments(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_tournament(
     *,
-    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    current_user_id: Annotated[str, Depends(get_current_user_id)],
     tournaments_repo: Annotated[TournamentsRepo, Depends(get_tournaments_repo)],
     new_tournament: NewTournament,
 ) -> Tournament:
@@ -74,11 +75,11 @@ async def create_tournament(
 
 @router.get("/{tournament_id}/")
 async def get_tournament(
-    tournament_id: int,
+    tournament_id: UUID,
     *,
     tournaments_repo: Annotated[TournamentsRepo, Depends(get_tournaments_repo)],
 ) -> Tournament:
-    tournament = await tournaments_repo.get_by_id(tournament_id)
+    tournament = await tournaments_repo.get_by_id(str(tournament_id))
     if tournament is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tournament not found")
     return tournament
@@ -86,7 +87,7 @@ async def get_tournament(
 
 @router.get("/{tournament_id}/scores", tags=["scores"])
 async def get_tournament_scores(
-    tournament_id: int,
+    tournament_id: UUID,
     from_: Annotated[datetime.datetime | None, Query(alias="from")] = None,
     to: Annotated[datetime.datetime | None, Query()] = None,
     *,
@@ -94,15 +95,15 @@ async def get_tournament_scores(
     tables_repo: Annotated[TablesRepo, Depends(get_tables_repo)],
     games_repo: Annotated[GamesRepo, Depends(get_games_repo)],
 ) -> PaginatedResponse[ScoreRow]:
-    tournament = await tournaments_repo.get_by_id(tournament_id)
+    tournament = await tournaments_repo.get_by_id(str(tournament_id))
     if tournament is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tournament not found")
-    tables = await tables_repo.get_by_tournament(tournament_id)
+    tables = await tables_repo.get_by_tournament(str(tournament_id))
     data = []
     for table in tables:
-        games = await games_repo.get_by_table(table.id, played_from=from_, played_to=to)
+        games = await games_repo.get_by_table(str(table.id), played_from=from_, played_to=to)
         for game in games:
-            result = await games_repo.get_result(game.id)
+            result = await games_repo.get_result(str(game.id))
             if result is not None:
                 data.append(TournamentGame(game=game, result=result))
     score = calc_score(data)
@@ -136,15 +137,15 @@ async def get_tournament_scores_csv(
 
 @router.get("/{tournament_id}/tables", tags=["tables"])
 async def get_tournament_tables(
-    tournament_id: int,
+    tournament_id: UUID,
     *,
     tournaments_repo: Annotated[TournamentsRepo, Depends(get_tournaments_repo)],
     tables_repo: Annotated[TablesRepo, Depends(get_tables_repo)],
 ) -> PaginatedResponse[Table]:
-    tournament = await tournaments_repo.get_by_id(tournament_id)
+    tournament = await tournaments_repo.get_by_id(str(tournament_id))
     if tournament is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tournament not found")
-    tables = await tables_repo.get_by_tournament(tournament_id)
+    tables = await tables_repo.get_by_tournament(str(tournament_id))
     return PaginatedResponse(
         page=1,
         total_pages=1,
@@ -154,7 +155,7 @@ async def get_tournament_tables(
 
 @router.post("/{tournament_id}/tables", tags=["tables"], status_code=status.HTTP_201_CREATED)
 async def create_table(
-    tournament_id: int,
+    tournament_id: UUID,
     *,
     new_table: NewTable,
     _: Annotated[int, Depends(get_current_user_id)],  # protect endpoint behind authorization
@@ -166,7 +167,7 @@ async def create_table(
 
 @router.put("/{tournament_id}/")
 async def update_tournament(
-    tournament_id: int,
+    tournament_id: UUID,
     *,
     _: Annotated[int, Depends(get_current_user_id)],  # protect endpoint behind authorization
     tournaments_repo: Annotated[TournamentsRepo, Depends(get_tournaments_repo)],

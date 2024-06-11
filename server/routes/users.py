@@ -16,7 +16,7 @@ router = APIRouter(
 @router.get("/me")
 async def get_me(
     *,
-    user_id: int = Depends(get_current_user_id),
+    user_id: Annotated[str, Depends(get_current_user_id)],
     users_repo: Annotated[UsersRepo, Depends(get_users_repo)],
 ) -> User:
     return await users_repo.get_by_id(user_id)

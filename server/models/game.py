@@ -1,5 +1,6 @@
 import datetime
 from typing import Annotated, Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -16,9 +17,9 @@ class NewGame(BaseModel):
 
 
 class Game(NewGame):
-    id: int
+    id: UUID
     number: int
-    table_id: int
+    table_id: UUID
 
 
 class PlayerExtraScore(BaseModel):

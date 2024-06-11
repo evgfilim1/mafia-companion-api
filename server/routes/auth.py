@@ -71,7 +71,7 @@ async def refresh_auth(
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
 async def logout_all(
     *,
-    user_id: Annotated[int, Depends(get_current_user_id)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
     auth_repo: Annotated[AuthRepo, Depends(get_auth_repo)],
 ) -> None:
     await auth_repo.revoke_all_tokens(user_id)
@@ -103,12 +103,12 @@ async def register(
         )
     except UserAlreadyExistsError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Username is already taken",
         )
     except PlayerAlreadyExistsError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Nickname is already taken",
         )
     return user

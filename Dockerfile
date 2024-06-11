@@ -1,4 +1,14 @@
 # syntax=docker/dockerfile:1
+FROM postgres:16 AS db
+
+COPY --from=ghcr.io/fboulnois/pg_uuidv7:1.5.0 \
+    /usr/lib/postgresql/$PG_MAJOR/lib/pg_uuidv7.so \
+    /usr/lib/postgresql/$PG_MAJOR/lib/pg_uuidv7.so
+COPY --from=ghcr.io/fboulnois/pg_uuidv7:1.5.0 \
+    /usr/share/postgresql/$PG_MAJOR/extension/pg_uuidv7.control \
+    /usr/share/postgresql/$PG_MAJOR/extension/pg_uuidv7--1.5.sql \
+    /usr/share/postgresql/$PG_MAJOR/extension/
+
 FROM python:3.12-slim AS deps
 
 WORKDIR /app
@@ -33,7 +43,7 @@ WORKDIR /app
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
     rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get update  \
+    && apt-get update \
     && apt-get install --no-install-recommends -y curl \
     && rm -rf /var/log/*
 COPY server server

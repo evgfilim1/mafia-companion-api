@@ -1,7 +1,8 @@
 import datetime
 from typing import AsyncIterator, overload
 
-from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy import delete, func, select, text, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +28,8 @@ from ..utils.exceptions.repo import (
 from ..utils.security import password_context
 from .base import BaseRepo
 
-type WithID[T] = tuple[int, T]
+type WithID[T] = tuple[str, T]
+SQLDefault = text("DEFAULT")
 
 
 class UsersRepo(BaseRepo[AsyncSession]):
@@ -59,7 +61,7 @@ class UsersRepo(BaseRepo[AsyncSession]):
             real_name=db_player.real_name,
         )
 
-    async def get_by_id(self, user_id: int) -> User | None:
+    async def get_by_id(self, user_id: str) -> User | None:
         return await self._db_to_model(await self._conn.get(db_models.User, user_id))
 
     async def get_by_username(self, username: str) -> User | None:
@@ -119,9 +121,38 @@ class UsersRepo(BaseRepo[AsyncSession]):
             UserAlreadyExistsError: If a user with the given username already exists.
             PlayerAlreadyExistsError: If a player with the given nickname already exists.
         """
-        password_hash = password_context.hash(password)
         players = PlayersRepo(self._conn)
-        player = await players.create(nickname, real_name=real_name)
+        player = await players.edit_or_create(nickname, real_name=real_name, id_=None)
+        return await self.create_linked(
+            username=username,
+            password=password,
+            player_id=str(player.id),
+        )
+
+    async def create_linked(
+        self,
+        username: str,
+        password: str,
+        *,
+        player_id: str,
+    ) -> User:
+        """Create a new user linked with an existing player.
+
+        Args:
+            username: The username of the new user.
+            password: The password of the new user.
+            player_id: The ID of the existing player.
+
+        Returns:
+            The created user.
+
+        Raises:
+            UserAlreadyExistsError: If a user with the given username already exists.
+            PlayerAlreadyExistsError: If a player with the given nickname already exists.
+        """
+        players = PlayersRepo(self._conn)
+        player = await players.get_by_id(player_id)
+        password_hash = password_context.hash(password)
         query = (
             insert(db_models.User)
             .values(username=username, password_hash=password_hash, player_id=player.id)
@@ -134,7 +165,7 @@ class UsersRepo(BaseRepo[AsyncSession]):
         user = result.scalar_one()
         return await self._db_to_model(user, player)
 
-    async def edit_password(self, user_id: int, password: str) -> None:
+    async def edit_password(self, user_id: str, password: str) -> None:
         password_hash = password_context.hash(password)
         await self._conn.execute(
             update(db_models.User)
@@ -154,7 +185,7 @@ class PlayersRepo(BaseRepo[AsyncSession]):
             real_name=db_player.real_name,
         )
 
-    async def get_by_id(self, player_id: int) -> Player | None:
+    async def get_by_id(self, player_id: str) -> Player | None:
         return self._db_to_model(await self._conn.get(db_models.Player, player_id))
 
     async def get_by_nickname(self, nickname: str) -> Player | None:
@@ -175,10 +206,24 @@ class PlayersRepo(BaseRepo[AsyncSession]):
         query = select(func.count()).select_from(db_models.Player)
         return (await self._conn.execute(query)).scalar()
 
-    async def create(self, nickname: str, *, real_name: str) -> Player:
+    async def edit_or_create(
+        self,
+        nickname: str,
+        *,
+        real_name: str,
+        id_: str | None,
+    ) -> Player:
         query = (
             insert(db_models.Player)
-            .values(nickname=nickname, real_name=real_name)
+            .values(
+                nickname=nickname,
+                real_name=real_name,
+                id=id_ if id_ is not None else SQLDefault,
+            )
+            .on_conflict_do_update(
+                index_elements=[db_models.Player.id],
+                set_=dict(nickname=nickname, real_name=real_name),
+            )
             .returning(db_models.Player)
         )
         try:
@@ -187,24 +232,7 @@ class PlayersRepo(BaseRepo[AsyncSession]):
             raise PlayerAlreadyExistsError(nickname) from e
         return self._db_to_model(result.scalar_one())
 
-    async def edit_real_name(self, player_id: int, real_name: str) -> None:
-        await self._conn.execute(
-            update(db_models.Player)
-            .where(db_models.Player.id == player_id)
-            .values(real_name=real_name)
-        )
-
-    async def edit_nickname(self, player_id: int, nickname: str) -> None:
-        try:
-            await self._conn.execute(
-                update(db_models.Player)
-                .where(db_models.Player.id == player_id)
-                .values(nickname=nickname)
-            )
-        except IntegrityError as e:
-            raise PlayerAlreadyExistsError(nickname) from e
-
-    async def delete(self, player_id: int) -> None:
+    async def delete(self, player_id: str) -> None:
         await self._conn.execute(delete(db_models.Player).where(db_models.Player.id == player_id))
 
 
@@ -220,7 +248,7 @@ class TournamentsRepo(BaseRepo[AsyncSession]):
             date_to=db_tournament.date_to,
         )
 
-    async def get_by_id(self, tournament_id: int) -> Tournament | None:
+    async def get_by_id(self, tournament_id: str) -> Tournament | None:
         return self._db_to_model(await self._conn.get(db_models.Tournament, tournament_id))
 
     async def get_all(self) -> list[Tournament]:
@@ -232,7 +260,7 @@ class TournamentsRepo(BaseRepo[AsyncSession]):
         async for tournament in await self._conn.stream_scalars(query):
             yield self._db_to_model(tournament)
 
-    async def get_by_creator_user_id(self, creator_user_id: int) -> list[Tournament]:
+    async def get_by_creator_user_id(self, creator_user_id: str) -> list[Tournament]:
         query = select(db_models.Tournament).where(
             db_models.Tournament.created_by_user_id == creator_user_id
         )
@@ -240,7 +268,7 @@ class TournamentsRepo(BaseRepo[AsyncSession]):
 
     async def get_by_creator_user_id_as_stream(
         self,
-        creator_user_id: int,
+        creator_user_id: str,
     ) -> AsyncIterator[Tournament]:
         query = select(db_models.Tournament).where(
             db_models.Tournament.created_by_user_id == creator_user_id
@@ -252,7 +280,7 @@ class TournamentsRepo(BaseRepo[AsyncSession]):
         self,
         name: str,
         *,
-        created_by: int,
+        created_by: str,
         date_from: datetime.datetime,
         date_to: datetime.datetime,
     ) -> Tournament:
@@ -264,21 +292,21 @@ class TournamentsRepo(BaseRepo[AsyncSession]):
         result = await self._conn.execute(query)
         return self._db_to_model(result.scalar_one())
 
-    async def edit_name(self, tournament_id: int, name: str) -> None:
+    async def edit_name(self, tournament_id: str, name: str) -> None:
         await self._conn.execute(
             update(db_models.Tournament)
             .where(db_models.Tournament.id == tournament_id)
             .values(name=name)
         )
 
-    async def edit_date_from(self, tournament_id: int, date_from: datetime.datetime) -> None:
+    async def edit_date_from(self, tournament_id: str, date_from: datetime.datetime) -> None:
         await self._conn.execute(
             update(db_models.Tournament)
             .where(db_models.Tournament.id == tournament_id)
             .values(date_from=date_from)
         )
 
-    async def edit_date_to(self, tournament_id: int, date_to: datetime.datetime) -> None:
+    async def edit_date_to(self, tournament_id: str, date_to: datetime.datetime) -> None:
         await self._conn.execute(
             update(db_models.Tournament)
             .where(db_models.Tournament.id == tournament_id)
@@ -304,22 +332,22 @@ class TablesRepo(BaseRepo[AsyncSession]):
             judge_nickname=judge_nickname,
         )
 
-    async def get_by_id(self, table_id: int) -> Table | None:
+    async def get_by_id(self, table_id: str) -> Table | None:
         return await self._db_to_model(await self._conn.get(db_models.Table, table_id))
 
-    async def get_by_tournament(self, tournament_id: int) -> list[Table]:
+    async def get_by_tournament(self, tournament_id: str) -> list[Table]:
         query = select(db_models.Table).where(db_models.Table.tournament_id == tournament_id)
         return [
             await self._db_to_model(table)
             for table in (await self._conn.execute(query)).scalars().all()
         ]
 
-    async def get_by_tournament_as_stream(self, tournament_id: int) -> AsyncIterator[Table]:
+    async def get_by_tournament_as_stream(self, tournament_id: str) -> AsyncIterator[Table]:
         query = select(db_models.Table).where(db_models.Table.tournament_id == tournament_id)
         async for table in await self._conn.stream_scalars(query):
             yield await self._db_to_model(table)
 
-    async def create(self, tournament_id: int, *, judge_username: str) -> Table:
+    async def create(self, tournament_id: str, *, judge_username: str) -> Table:
         judge_query = select(db_models.User).where(db_models.User.username == judge_username)
         judge = (await self._conn.execute(judge_query)).scalar_one()
         last_number_query = select(func.max(db_models.Table.number)).where(
@@ -336,7 +364,7 @@ class TablesRepo(BaseRepo[AsyncSession]):
         res = (await self._conn.execute(query)).scalar_one()
         return await self._db_to_model(res, judge_username)
 
-    async def delete(self, table_id: int) -> None:
+    async def delete(self, table_id: str) -> None:
         await self._conn.execute(delete(db_models.Table).where(db_models.Table.id == table_id))
 
 
@@ -417,12 +445,12 @@ class GamesRepo(BaseRepo[AsyncSession]):
             finished_at=db_game_result.finished_at,
         )
 
-    async def get_by_id(self, game_id: int) -> Game | None:
+    async def get_by_id(self, game_id: str) -> Game | None:
         return await self._db_to_model(await self._conn.get(db_models.Game, game_id))
 
     async def get_by_table(
         self,
-        table_id: int,
+        table_id: str,
         *,
         played_from: datetime.datetime | None = None,
         played_to: datetime.datetime | None = None,
@@ -441,7 +469,7 @@ class GamesRepo(BaseRepo[AsyncSession]):
 
     async def get_by_table_as_stream(
         self,
-        table_id: int,
+        table_id: str,
         *,
         played_from: datetime.datetime | None = None,
         played_to: datetime.datetime | None = None,
@@ -458,9 +486,10 @@ class GamesRepo(BaseRepo[AsyncSession]):
 
     async def create(
         self,
-        table_id: int,
+        table_id: str,
         *,
         players: list[GamePlayer],
+        id_: str | None = None,
     ) -> Game:
         last_number_query = select(func.max(db_models.Game.number)).where(
             db_models.Game.table_id == table_id
@@ -470,28 +499,32 @@ class GamesRepo(BaseRepo[AsyncSession]):
             last_number = 0
         query = (
             insert(db_models.Game)
-            .values(table_id=table_id, number=last_number + 1)
+            .values(
+                table_id=table_id,
+                number=last_number + 1,
+                id=id_ if id_ is not None else SQLDefault,
+            )
             .returning(db_models.Game)
         )
         res = (await self._conn.execute(query)).scalar_one()
         game_id = res.id
         players_repo = PlayersRepo(self._conn)
         for seat, player in enumerate(players, start=1):
-            id_ = (await players_repo.get_by_nickname(player.nickname)).id
+            player_id = (await players_repo.get_by_nickname(player.nickname)).id
             await self._conn.execute(
                 insert(db_models.GamePlayer)
-                .values(game_id=game_id, player_id=id_, role=player.role, seat=seat)
+                .values(game_id=game_id, player_id=player_id, role=player.role, seat=seat)
                 .returning(db_models.GamePlayer)
             )
         return await self._db_to_model(res, players)
 
-    async def get_result(self, game_id: int) -> GameResult | None:
+    async def get_result(self, game_id: str) -> GameResult | None:
         query = select(db_models.GameResult).where(db_models.GameResult.game_id == game_id)
         return await self._db_result_to_model(
             (await self._conn.execute(query)).scalar_one_or_none()
         )
 
-    async def set_result(self, game_id: int, result: NewGameResult) -> GameResult:
+    async def set_result(self, game_id: str, result: NewGameResult) -> GameResult:
         finished_at = (
             result.finished_at if result.finished_at is not None else get_current_datetime_utc()
         )
@@ -505,7 +538,7 @@ class GamesRepo(BaseRepo[AsyncSession]):
             .returning(db_models.GameResult)
         )
         db_result = (await self._conn.execute(query)).scalar_one()
-        game = await GamesRepo(self._conn).get_by_id(game_id)
+        game = await self.get_by_id(game_id)
         for player_result, game_player in zip(result.results, game.players):
             player = await PlayersRepo(self._conn).get_by_nickname(game_player.nickname)
             query = insert(db_models.GamePlayerResult).values(

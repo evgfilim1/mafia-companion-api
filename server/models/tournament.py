@@ -1,4 +1,5 @@
 import datetime
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -10,7 +11,7 @@ class NewTournament(BaseModel):
 
 
 class Tournament(NewTournament):
-    id: int
+    id: UUID
 
 
 class NewTable(BaseModel):
@@ -18,6 +19,6 @@ class NewTable(BaseModel):
 
 
 class Table(BaseModel):
-    id: int
+    id: UUID
     number: int
     judge_nickname: str
