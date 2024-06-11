@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     PrimaryKeyConstraint,
     UniqueConstraint,
     Uuid,
@@ -111,14 +112,13 @@ class GamePlayer(BaseDBModel):
     __tablename__ = "game_players"
 
     game_id: Mapped[_uuid] = _fk(Game.id)
-    player_id: Mapped[_uuid] = _fk(Player.id)
+    player_id: Mapped[_uuid | None] = _fk(Player.id)
     role: Mapped[Role]
     seat: Mapped[int] = mapped_column()
 
     __table_args__ = (
-        PrimaryKeyConstraint(game_id, player_id),
+        PrimaryKeyConstraint(game_id, seat),
         CheckConstraint((1 <= seat) & (seat <= 10)),
-        UniqueConstraint(game_id, seat),
     )
 
 
@@ -140,8 +140,8 @@ class GameLog(BaseDBModel):
 class GamePlayerResult(BaseDBModel):
     __tablename__ = "game_player_results"
 
-    game_id: Mapped[_uuid] = _fk(Game.id)
-    player_id: Mapped[_uuid] = _fk(Player.id)
+    game_id: Mapped[_uuid] = mapped_column()
+    seat: Mapped[int] = mapped_column()
     warn_count: Mapped[int] = mapped_column()
     was_kicked: Mapped[bool]
     caused_other_team_won: Mapped[bool]
@@ -151,7 +151,8 @@ class GamePlayerResult(BaseDBModel):
     guessed_mafia_count: Mapped[int] = mapped_column()
 
     __table_args__ = (
-        PrimaryKeyConstraint(game_id, player_id),
+        PrimaryKeyConstraint(game_id, seat),
+        ForeignKeyConstraint([game_id, seat], [GamePlayer.game_id, GamePlayer.seat]),
         CheckConstraint((0 <= warn_count) & (warn_count <= 4)),
         CheckConstraint((0 <= found_mafia_count) & (found_mafia_count <= 3)),
         CheckConstraint((0 <= guessed_mafia_count) & (guessed_mafia_count <= 3)),
@@ -165,13 +166,14 @@ class GamePlayerResult(BaseDBModel):
 class GamePlayerExtraScore(BaseDBModel):
     __tablename__ = "game_player_extra_scores"
 
-    game_id: Mapped[_uuid] = _fk(Game.id)
-    player_id: Mapped[_uuid] = _fk(Player.id)
+    game_id: Mapped[_uuid] = mapped_column()
+    seat: Mapped[int] = mapped_column()
     score: Mapped[float]
     reason: Mapped[str] = mapped_column()
 
     __table_args__ = (
-        PrimaryKeyConstraint(game_id, player_id),
+        PrimaryKeyConstraint(game_id, seat),
+        ForeignKeyConstraint([game_id, seat], [GamePlayer.game_id, GamePlayer.seat]),
         CheckConstraint(reason.like("_%")),
     )
 

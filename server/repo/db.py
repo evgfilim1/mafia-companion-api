@@ -391,7 +391,7 @@ class GamesRepo(BaseRepo[AsyncSession]):
         if players is None:
             query = (
                 select(db_models.Player.nickname, db_models.GamePlayer.role)
-                .join(db_models.GamePlayer)
+                .outerjoin(db_models.Player)
                 .where(db_models.GamePlayer.game_id == db_game.id)
                 .order_by(db_models.GamePlayer.seat)
             )
@@ -416,11 +416,7 @@ class GamesRepo(BaseRepo[AsyncSession]):
         if player_results is None:
             query = (
                 select(db_models.GamePlayerResult)
-                .join(
-                    db_models.GamePlayer,
-                    (db_models.GamePlayer.player_id == db_models.GamePlayerResult.player_id)
-                    & (db_models.GamePlayer.game_id == db_models.GamePlayerResult.game_id),
-                )
+                .join(db_models.GamePlayer)
                 .where(db_models.GamePlayerResult.game_id == db_game_result.game_id)
                 .order_by(db_models.GamePlayer.seat)
             )
@@ -440,9 +436,7 @@ class GamesRepo(BaseRepo[AsyncSession]):
                         PlayerExtraScore(points=score.score, reason=score.reason)
                         for score in (
                             await self._conn.execute(
-                                q_score.where(
-                                    db_models.GamePlayerExtraScore.player_id == item.player_id
-                                )
+                                q_score.where(db_models.GamePlayerExtraScore.seat == item.seat)
                             )
                         )
                         .scalars()
@@ -522,7 +516,10 @@ class GamesRepo(BaseRepo[AsyncSession]):
         game_id = res.id
         players_repo = PlayersRepo(self._conn)
         for seat, player in enumerate(players, start=1):
-            player_id = (await players_repo.get_by_nickname(player.nickname)).id
+            if player.nickname is not None:
+                player_id = (await players_repo.get_by_nickname(player.nickname)).id
+            else:
+                player_id = None
             await self._conn.execute(
                 insert(db_models.GamePlayer)
                 .values(game_id=game_id, player_id=player_id, role=player.role, seat=seat)
@@ -550,12 +547,10 @@ class GamesRepo(BaseRepo[AsyncSession]):
             .returning(db_models.GameResult)
         )
         db_result = (await self._conn.execute(query)).scalar_one()
-        game = await self.get_by_id(game_id)
-        for player_result, game_player in zip(result.results, game.players):
-            player = await PlayersRepo(self._conn).get_by_nickname(game_player.nickname)
+        for seat, player_result in enumerate(result.results, start=1):
             query = insert(db_models.GamePlayerResult).values(
                 game_id=game_id,
-                player_id=player.id,
+                seat=seat,
                 warn_count=player_result.warn_count,
                 was_kicked=player_result.was_kicked,
                 caused_other_team_won=player_result.caused_other_team_won,
@@ -569,7 +564,7 @@ class GamesRepo(BaseRepo[AsyncSession]):
                 await self._conn.execute(
                     insert(db_models.GamePlayerExtraScore).values(
                         game_id=game_id,
-                        player_id=player.id,
+                        seat=seat,
                         score=extra_score.points,
                         reason=extra_score.reason,
                     )

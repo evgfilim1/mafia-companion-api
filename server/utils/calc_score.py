@@ -23,6 +23,8 @@ def calc_score(games: list[TournamentGame]) -> list[ScoreRow]:
         player: GamePlayer
         result: PlayerResult
         for player, result in zip(game.game.players, game.result.results):
+            if player.nickname is None:
+                continue  # Skip guests
             row = players.setdefault(player.nickname, ScoreRow(nickname=player.nickname))
             row.games_by_role[player.role] += 1
             if result.was_killed_first_night:

@@ -8,7 +8,7 @@ from ..utils.enums import Role, Team
 
 
 class GamePlayer(BaseModel):
-    nickname: str
+    nickname: str | None
     role: Role
 
 
