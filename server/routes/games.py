@@ -63,4 +63,10 @@ async def set_game_result(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only judge can set game result",
         )
+    game_existing_result = await games_repo.get_result(str(game_id))
+    if game_existing_result is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Game result already set",
+        )
     return await games_repo.set_result(str(game_id), result)
