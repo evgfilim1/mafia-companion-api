@@ -74,6 +74,7 @@ async def change_password(
     passwd: ChangePasswordModel,
     user_id: Annotated[str, Depends(get_current_user_id)],
     users_repo: Annotated[UsersRepo, Depends(get_users_repo)],
+    auth_repo: Annotated[AuthRepo, Depends(get_auth_repo)],
 ) -> None:
     if not await users_repo.verify_password(user_id, passwd.old_password):
         raise HTTPException(
@@ -81,6 +82,7 @@ async def change_password(
             detail="Invalid old password",
         )
     await users_repo.edit_password(user_id, passwd.new_password)
+    await auth_repo.revoke_all_tokens(user_id)
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
